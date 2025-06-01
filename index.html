@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RS Docs Manager</title>
   <style>
     body {
@@ -27,34 +27,55 @@
       margin-top: 10px;
       border: 1px solid #ccc;
       border-radius: 4px;
+      box-sizing: border-box;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       background: #fff;
       margin-top: 20px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
     }
     th, td {
       padding: 10px;
       border: 1px solid #ddd;
+      text-align: center;
+      vertical-align: middle;
     }
     th {
       background-color: #f0f0f0;
     }
-    #searchBox {
+    #previewContainer {
       max-width: 600px;
-      margin: 0 auto 20px;
-      display: block;
+      margin: 20px auto;
+      background: #fff;
       padding: 10px;
-      border-radius: 4px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: none;
+    }
+    #previewContainer h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    #previewContent img {
+      max-width: 100%;
+      height: auto;
       border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #previewContent iframe {
+      width: 100%;
+      height: 500px;
+      border: none;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
   <h1>RS Docs Manager</h1>
-  <input type="text" id="searchBox" placeholder="Search by type or given by...">
-
   <form id="docForm">
     <label>Date:</label>
     <input type="date" id="date" required />
@@ -62,7 +83,7 @@
     <input type="text" id="type" placeholder="Enter document type" required />
     <label>Given By:</label>
     <input type="text" id="givenBy" placeholder="Enter name" required />
-    <label>Upload Document:</label>
+    <label>Upload Document (Image or PDF):</label>
     <input type="file" id="document" accept="image/*,.pdf" required />
     <button type="submit">Add Entry</button>
   </form>
@@ -79,6 +100,11 @@
     <tbody></tbody>
   </table>
 
+  <div id="previewContainer">
+    <h3>Document Preview</h3>
+    <div id="previewContent"></div>
+  </div>
+
   <script>
     function setTodayDate() {
       const today = new Date().toISOString().split('T')[0];
@@ -92,7 +118,8 @@
 
     const form = document.getElementById('docForm');
     const tableBody = document.querySelector('#docTable tbody');
-    const searchBox = document.getElementById('searchBox');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewContent = document.getElementById('previewContent');
 
     function saveEntriesToStorage(entries) {
       localStorage.setItem('rsDocsEntries', JSON.stringify(entries));
@@ -105,12 +132,47 @@
 
     function addTableRow(entry) {
       const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${entry.date}</td>
-        <td>${entry.type}</td>
-        <td>${entry.givenBy}</td>
-        <td><a href="${entry.fileData}" target="_blank">View</a></td>
-      `;
+
+      const dateCell = document.createElement('td');
+      dateCell.textContent = entry.date;
+      row.appendChild(dateCell);
+
+      const typeCell = document.createElement('td');
+      typeCell.textContent = entry.type;
+      row.appendChild(typeCell);
+
+      const givenByCell = document.createElement('td');
+      givenByCell.textContent = entry.givenBy;
+      row.appendChild(givenByCell);
+
+      const docCell = document.createElement('td');
+      const viewLink = document.createElement('a');
+      viewLink.href = "#";
+      viewLink.textContent = "View";
+      viewLink.style.cursor = "pointer";
+
+      viewLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        previewContent.innerHTML = ''; // Clear old preview
+
+        if (entry.fileData.startsWith('data:image')) {
+          const img = document.createElement('img');
+          img.src = entry.fileData;
+          previewContent.appendChild(img);
+        } else if (entry.fileData.startsWith('data:application/pdf')) {
+          const iframe = document.createElement('iframe');
+          iframe.src = entry.fileData;
+          previewContent.appendChild(iframe);
+        } else {
+          previewContent.textContent = 'Preview not available for this file type.';
+        }
+        previewContainer.style.display = 'block';
+        previewContainer.scrollIntoView({ behavior: 'smooth' });
+      });
+
+      docCell.appendChild(viewLink);
+      row.appendChild(docCell);
+
       tableBody.appendChild(row);
     }
 
@@ -118,9 +180,14 @@
       e.preventDefault();
 
       const date = document.getElementById('date').value;
-      const type = document.getElementById('type').value;
-      const givenBy = document.getElementById('givenBy').value;
+      const type = document.getElementById('type').value.trim();
+      const givenBy = document.getElementById('givenBy').value.trim();
       const file = document.getElementById('document').files[0];
+
+      if (!date || !type || !givenBy || !file) {
+        alert('Please fill all fields and select a document.');
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = function () {
@@ -137,19 +204,7 @@
         setTodayDate();
       };
 
-      if (file) {
-        reader.readAsDataURL(file);
-      }
-    });
-
-    searchBox.addEventListener('input', function () {
-      const query = this.value.toLowerCase();
-      const rows = document.querySelectorAll('#docTable tbody tr');
-      rows.forEach(row => {
-        const type = row.cells[1].textContent.toLowerCase();
-        const givenBy = row.cells[2].textContent.toLowerCase();
-        row.style.display = type.includes(query) || givenBy.includes(query) ? '' : 'none';
-      });
+      reader.readAsDataURL(file);
     });
   </script>
 </body>
