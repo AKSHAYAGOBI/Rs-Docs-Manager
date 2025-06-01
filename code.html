@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RS Docs Manager</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 0 auto 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    input, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <h1>RS Docs Manager</h1>
+  <form id="docForm">
+    <label>Date:</label>
+    <input type="date" id="date" required />
+    <label>Type of Entity:</label>
+    <input type="text" id="type" placeholder="Enter document type" required />
+    <label>Given By:</label>
+    <input type="text" id="givenBy" placeholder="Enter name" required />
+    <label>Upload Document:</label>
+    <input type="file" id="document" accept="image/*,.pdf" required />
+    <button type="submit">Add Entry</button>
+  </form>
+
+  <table id="docTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Given By</th>
+        <th>Document</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    function setTodayDate() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('date').value = today;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      setTodayDate();
+      loadEntries();
+    });
+
+    const form = document.getElementById('docForm');
+    const tableBody = document.querySelector('#docTable tbody');
+
+    function saveEntriesToStorage(entries) {
+      localStorage.setItem('rsDocsEntries', JSON.stringify(entries));
+    }
+
+    function loadEntries() {
+      const entries = JSON.parse(localStorage.getItem('rsDocsEntries')) || [];
+      entries.forEach(entry => addTableRow(entry));
+    }
+
+    function addTableRow(entry) {
+      const row = tableBody.insertRow();
+      row.insertCell(0).textContent = entry.date;
+      row.insertCell(1).textContent = entry.type;
+      row.insertCell(2).textContent = entry.givenBy;
+
+      const cell = row.insertCell(3);
+      const link = document.createElement('a');
+      link.href = entry.fileData;
+      link.target = '_blank';
+      link.textContent = 'View';
+      cell.appendChild(link);
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const date = document.getElementById('date').value;
+      const type = document.getElementById('type').value;
+      const givenBy = document.getElementById('givenBy').value;
+      const file = document.getElementById('document').files[0];
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const fileData = reader.result;
+        const entry = { date, type, givenBy, fileData };
+
+        // Add to table and storage
+        addTableRow(entry);
+        const entries = JSON.parse(localStorage.getItem('rsDocsEntries')) || [];
+        entries.push(entry);
+        saveEntriesToStorage(entries);
+
+        form.reset();
+        setTodayDate();
+      };
+
+      if (file) {
+        reader.readAsDataURL(file);
+      }
+    });
+  </script>
+</body>
+</html>
